@@ -2,9 +2,10 @@ import tkinter as tk
 from tkinter import messagebox
 import sqlite3
 import ttkbootstrap as tb 
-from ttkbootstrap.constants import * # =========================================================
+from ttkbootstrap.constants import * 
+
+
 # 1. БАЗА ДАННИ (BACKEND)
-# =========================================================
 class DB:
     def __init__(self):
         # Името на базата данни
@@ -14,7 +15,7 @@ class DB:
         self.create_tables()
 
     def create_tables(self):
-        # 1. СТУДЕНТИ (с поле Специалност)
+        # 1. СТУДЕНТИ
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS students (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +24,6 @@ class DB:
                 major TEXT NOT NULL
             )
         """)
-        
         # 2. ПРЕПОДАВАТЕЛИ
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS professors (
@@ -32,8 +32,7 @@ class DB:
                 title TEXT
             )
         """)
-
-        # 3. ДИСЦИПЛИНИ (свързани с преподавател)
+        # 3. ДИСЦИПЛИНИ
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS courses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +42,7 @@ class DB:
             )
         """)
 
-        # 4. ОЦЕНКИ (свързани със студент и курс, каскадно триене)
+        # 4. ОЦЕНКИ
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS grades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,21 +56,20 @@ class DB:
         """)
         self.conn.commit()
 
-    # --- МЕТОДИ ЗА СТУДЕНТИ ---
+    # МЕТОДИ ЗА СТУДЕНТИ
     def add_student(self, name, fn, major):
         try:
             self.cur.execute("INSERT INTO students (name, fn, major) VALUES (?, ?, ?)", (name, fn, major))
             self.conn.commit()
             return True
         except sqlite3.IntegrityError:
-            return False # Вече има такъв факултетен номер
+            return False 
 
     def get_students(self):
         self.cur.execute("SELECT * FROM students")
         return self.cur.fetchall()
 
     def delete_student(self, student_id):
-        # Заради ON DELETE CASCADE, оценките се трият сами
         self.cur.execute("DELETE FROM students WHERE id = ?", (student_id,))
         self.conn.commit()
     
@@ -80,7 +78,7 @@ class DB:
         res = self.cur.fetchone()
         return round(res[0], 2) if res and res[0] else 0.00
 
-    # --- МЕТОДИ ЗА ПРЕПОДАВАТЕЛИ ---
+    # МЕТОДИ ЗА ПРЕПОДАВАТЕЛИ
     def add_professor(self, name, title):
         self.cur.execute("INSERT INTO professors (name, title) VALUES (?, ?)", (name, title))
         self.conn.commit()
@@ -89,13 +87,12 @@ class DB:
         self.cur.execute("SELECT * FROM professors")
         return self.cur.fetchall()
 
-    # --- МЕТОДИ ЗА КУРСОВЕ ---
+    # МЕТОДИ ЗА КУРСОВЕ
     def add_course(self, name, professor_id):
         self.cur.execute("INSERT INTO courses (name, professor_id) VALUES (?, ?)", (name, professor_id))
         self.conn.commit()
 
     def get_courses_visual(self):
-        # Взимаме имената на професорите чрез JOIN
         query = """
             SELECT courses.id, courses.name, professors.title, professors.name
             FROM courses
@@ -104,14 +101,13 @@ class DB:
         self.cur.execute(query)
         return self.cur.fetchall()
 
-    # --- МЕТОДИ ЗА ОЦЕНКИ ---
+    # МЕТОДИ ЗА ОЦЕНКИ
     def add_grade(self, student_id, course_id, grade):
         self.cur.execute("INSERT INTO grades (student_id, course_id, grade) VALUES (?, ?, ?)", 
                          (student_id, course_id, grade))
         self.conn.commit()
 
     def get_grades_visual(self):
-        # Взимаме имената на студентите и предметите
         query = """
             SELECT grades.id, students.name, students.fn, courses.name, grades.grade
             FROM grades
@@ -121,9 +117,8 @@ class DB:
         self.cur.execute(query)
         return self.cur.fetchall()
 
-# =========================================================
 # 2. ГРАФИЧЕН ИНТЕРФЕЙС (GUI)
-# =========================================================
+
 class UniversityApp:
     def __init__(self, root):
         self.db = DB()
@@ -131,15 +126,12 @@ class UniversityApp:
         self.root.title("Университетска Система")
         self.root.geometry("1100x800")
         
-        # Заглавие
         lbl = tb.Label(root, text="Академична Справка & Управление", font=("Helvetica", 20, "bold"), bootstyle="primary")
         lbl.pack(pady=15)
 
-        # Контейнер за табове
         self.notebook = tb.Notebook(root, bootstyle="primary") 
         self.notebook.pack(pady=5, padx=15, fill='both', expand=True)
 
-        # Създаване на страниците
         self.tab_students = tb.Frame(self.notebook)
         self.tab_profs = tb.Frame(self.notebook)
         self.tab_courses = tb.Frame(self.notebook)
@@ -150,28 +142,22 @@ class UniversityApp:
         self.notebook.add(self.tab_courses, text="📚 Дисциплини")
         self.notebook.add(self.tab_grades, text="📝 Оценки")
 
-        # Речници за ID-та (Helper maps)
         self.map_students = {}
         self.map_profs = {}
         self.map_courses = {}
 
-        # Стартиране на логиката за всеки таб
         self.setup_students()
         self.setup_profs()
         self.setup_courses()
         self.setup_grades()
 
-        # Слушател за смяна на таб (Refresh)
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
-    # -----------------------------------------------------
-    # ТАБ 1: СТУДЕНТИ (С ПОЛЕ ЗА СПЕЦИАЛНОСТ)
-    # -----------------------------------------------------
+    # ТАБ 1: СТУДЕНТИ
     def setup_students(self):
         frame = tb.Labelframe(self.tab_students, text=" Регистрация на нов студент ", bootstyle="info")
         frame.pack(fill="x", padx=10, pady=10)
 
-        # Използваме Grid за по-добра подредба на 3 полета
         tb.Label(frame, text="Име:").grid(row=0, column=0, padx=10, pady=15)
         self.ent_s_name = tb.Entry(frame, width=25)
         self.ent_s_name.grid(row=0, column=1, padx=10, pady=15)
@@ -224,7 +210,6 @@ class UniversityApp:
             if messagebox.askyesno("Сигурни ли сте?", "Това ще изтрие студента и всички негови оценки!"):
                 self.db.delete_student(sid)
                 self.refresh_students()
-                # Трябва да обновим и таблицата с оценките, ако е отворена
                 self.refresh_grades() 
 
     def show_gpa(self):
@@ -240,9 +225,8 @@ class UniversityApp:
         for i in self.tree_s.get_children(): self.tree_s.delete(i)
         for row in self.db.get_students(): self.tree_s.insert("", tk.END, values=row)
 
-    # -----------------------------------------------------
     # ТАБ 2: ПРЕПОДАВАТЕЛИ
-    # -----------------------------------------------------
+
     def setup_profs(self):
         frame = tb.Labelframe(self.tab_profs, text=" Преподавател ", bootstyle="primary")
         frame.pack(fill="x", padx=10, pady=10)
@@ -270,9 +254,8 @@ class UniversityApp:
         for i in self.tree_p.get_children(): self.tree_p.delete(i)
         for row in self.db.get_professors(): self.tree_p.insert("", tk.END, values=row)
 
-    # -----------------------------------------------------
     # ТАБ 3: ДИСЦИПЛИНИ
-    # -----------------------------------------------------
+
     def setup_courses(self):
         frame = tb.Labelframe(self.tab_courses, text=" Нова Дисциплина ", bootstyle="secondary")
         frame.pack(fill="x", padx=10, pady=10)
@@ -311,9 +294,8 @@ class UniversityApp:
             full_prof = f"{row[2]} {row[3]}" if row[3] else "Без преподавател"
             self.tree_c.insert("", tk.END, values=(row[0], row[1], full_prof))
 
-    # -----------------------------------------------------
     # ТАБ 4: ОЦЕНКИ
-    # -----------------------------------------------------
+
     def setup_grades(self):
         frame = tb.Labelframe(self.tab_grades, text=" Протокол за изпит ", bootstyle="danger")
         frame.pack(fill="x", padx=10, pady=10)
@@ -363,11 +345,10 @@ class UniversityApp:
         for row in self.db.get_grades_visual():
             self.tree_g.insert("", tk.END, values=row)
 
-    # -----------------------------------------------------
-    # ОБЩА ЛОГИКА (Refresh Maps)
-    # -----------------------------------------------------
+    # ОБЩА ЛОГИКА
+
     def on_tab_change(self, event):
-        # 1. Зареждане на мап за Студенти
+
         self.map_students = {}
         s_list = []
         for s in self.db.get_students():
@@ -376,7 +357,6 @@ class UniversityApp:
             s_list.append(txt)
         self.cb_g_student['values'] = s_list
 
-        # 2. Зареждане на мап за Преподаватели
         self.map_profs = {}
         p_list = []
         for p in self.db.get_professors():
@@ -385,7 +365,6 @@ class UniversityApp:
             p_list.append(txt)
         self.cb_c_prof['values'] = p_list
 
-        # 3. Зареждане на мап за Курсове
         self.map_courses = {}
         c_list = []
         courses = self.db.get_courses_visual() 
