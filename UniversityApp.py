@@ -10,7 +10,7 @@ class DB:
     def __init__(self):
         # Името на базата данни
         self.conn = sqlite3.connect("university.db")
-        self.conn.execute("PRAGMA foreign_keys = 1") # Активираме връзките между таблиците
+        self.conn.execute("PRAGMA foreign_keys = 1")
         self.cur = self.conn.cursor()
         self.create_tables()
 
@@ -41,7 +41,6 @@ class DB:
                 FOREIGN KEY (professor_id) REFERENCES professors (id) ON DELETE SET NULL
             )
         """)
-
         # 4. ОЦЕНКИ
         self.cur.execute("""
             CREATE TABLE IF NOT EXISTS grades (
@@ -172,7 +171,6 @@ class UniversityApp:
 
         tb.Button(frame, text="Добави", bootstyle="success", command=self.add_student).grid(row=0, column=6, padx=20, pady=15)
 
-        # Таблица
         cols = ("ID", "Име", "Фак. №", "Специалност")
         self.tree_s = tb.Treeview(self.tab_students, columns=cols, show="headings", bootstyle="info")
         for c in cols: self.tree_s.heading(c, text=c)
@@ -188,12 +186,11 @@ class UniversityApp:
     def add_student(self):
         name = self.ent_s_name.get()
         fn = self.ent_s_fn.get()
-        major = self.ent_s_major.get() # Взимаме и специалността
+        major = self.ent_s_major.get()
 
         if name and fn and major:
             if self.db.add_student(name, fn, major):
                 self.refresh_students()
-                # Чистим полетата
                 self.ent_s_name.delete(0, tk.END)
                 self.ent_s_fn.delete(0, tk.END)
                 self.ent_s_major.delete(0, tk.END)
@@ -314,7 +311,7 @@ class UniversityApp:
 
         tb.Button(frame, text="Впиши", bootstyle="danger", command=self.add_grade).pack(side="left", padx=10)
 
-        cols = ("ID", "Студент", "ФН", "Предмет", "Оценка")
+        cols = ("ID", "Студент", "Фак. №", "Предмет", "Оценка")
         self.tree_g = tb.Treeview(self.tab_grades, columns=cols, show="headings", bootstyle="danger")
         for c in cols: self.tree_g.heading(c, text=c)
         self.tree_g.pack(fill="both", expand=True, padx=10, pady=5)
@@ -346,7 +343,6 @@ class UniversityApp:
             self.tree_g.insert("", tk.END, values=row)
 
     # ОБЩА ЛОГИКА
-
     def on_tab_change(self, event):
 
         self.map_students = {}
@@ -373,7 +369,6 @@ class UniversityApp:
             self.map_courses[txt] = c[0] # ID
             c_list.append(txt)
         self.cb_g_course['values'] = c_list
-        
         # Обновяване на всички таблици
         self.refresh_students()
         self.refresh_profs()
